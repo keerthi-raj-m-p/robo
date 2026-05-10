@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useRobotStore } from '@/store/useRobotStore';
 import { useWebSocket } from '@/store/useWebSocket';
 import TopBar from '@/components/Header';
@@ -9,9 +9,9 @@ import ControlTab from '@/components/ControlTab';
 import dynamic from 'next/dynamic';
 const GestureTab = dynamic(() => import('@/components/GestureTab'), { ssr: false });
 import ProgramTab from '@/components/ProgramTab';
-import IOTab from '@/components/IOTab';
-import MonitorTab from '@/components/MonitorTab';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRemoteSync } from '@/hooks/useRemoteSync';
+import { Smartphone } from 'lucide-react';
 
 function useDemoTelemetry() {
   const { connectionMode, updateTelemetry, addLog } = useRobotStore();
@@ -55,7 +55,18 @@ function useDemoTelemetry() {
       });
       store.addProgram({
         id: 'prog-3', name: 'Assembly Sequence', createdAt: 'May 18, 2025', modifiedAt: 'Yesterday, 04:30 PM',
-        steps: Array.from({ length: 18 }, (_, i) => ({ id: `s${i}`, name: `Step ${i + 1}`, duration: 1.5, angles: [0, 45, 90, 0, 0, 0] }))
+        steps: [
+          { id: 'as1', name: 'Fetch Part A', duration: 2.0, angles: [45, 30, 100, 0, 90, 90] },
+          { id: 'as2', name: 'Align Part A', duration: 1.5, angles: [45, 45, 90, 0, 90, 90] },
+          { id: 'as3', name: 'Insert Part A', duration: 2.0, angles: [45, 60, 80, 0, 90, 90] },
+          { id: 'as4', name: 'Release', duration: 1.0, angles: [45, 60, 80, 0, 90, 0] },
+          { id: 'as5', name: 'Retract', duration: 1.5, angles: [45, 30, 110, 0, 0, 0] },
+          { id: 'as6', name: 'Fetch Part B', duration: 2.0, angles: [-45, 30, 100, 0, -90, 90] },
+          { id: 'as7', name: 'Align Part B', duration: 1.5, angles: [-45, 45, 90, 0, -90, 90] },
+          { id: 'as8', name: 'Join Parts', duration: 2.5, angles: [0, 60, 80, 0, 0, 90] },
+          { id: 'as9', name: 'Tighten', duration: 1.5, angles: [0, 60, 80, 45, 0, 90] },
+          { id: 'as10', name: 'Home', duration: 2.0, angles: [0, 45, 90, 0, 0, 90] },
+        ]
       });
       store.setActiveProgram('prog-1');
     }
@@ -64,7 +75,7 @@ function useDemoTelemetry() {
       const store = useRobotStore.getState();
       const current = store.jointAngles;
       const target = store.targetAngles;
-      
+
       const newAngles = current.map((a, i) => {
         const diff = target[i] - a;
         if (Math.abs(diff) < 0.5) return target[i];
@@ -88,39 +99,44 @@ function useDemoTelemetry() {
 }
 
 export default function Home() {
-  const { activeTab } = useRobotStore();
+  const { activeTab, isRemote, roomId } = useRobotStore();
   const { sendMessage } = useWebSocket();
+  const { sendRemoteCommand } = useRemoteSync(sendMessage);
   useDemoTelemetry();
 
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'control': return <ControlTab onSend={sendMessage} />;
-      case 'gesture': return <GestureTab onSend={sendMessage} />;
-      case 'program': return <ProgramTab onSend={sendMessage} />;
-      case 'io': return <IOTab onSend={sendMessage} />;
-      case 'monitor': return <MonitorTab />;
-      default: return <ControlTab onSend={sendMessage} />;
+  const handleCommand = useCallback((data: Record<string, any>) => {
+    if (isRemote) {
+      sendRemoteCommand(data);
+    } else {
+      sendMessage(data);
     }
+  }, [isRemote, sendRemoteCommand, sendMessage]);
+
+  const renderTabs = () => {
+    return (
+      <>
+        <div className={activeTab === 'control' ? 'h-full' : 'hidden'}><ControlTab onSend={handleCommand} /></div>
+        <div className={activeTab === 'gesture' ? 'h-full' : 'hidden'}><GestureTab onSend={handleCommand} /></div>
+        <div className={activeTab === 'program' ? 'h-full' : 'hidden'}><ProgramTab onSend={handleCommand} /></div>
+      </>
+    );
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--color-robo-bg)]">
-      <TopBar />
-      <main className="flex-1 overflow-auto min-h-0">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="h-full"
-          >
-            {renderTab()}
-          </motion.div>
-        </AnimatePresence>
+    <div className={`h-screen flex flex-col bg-[var(--color-robo-bg)] ${isRemote ? 'overflow-hidden' : ''}`}>
+      {!isRemote && <TopBar />}
+      <main className="flex-1 overflow-auto min-h-0 relative">
+        {isRemote && (
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1 bg-[var(--color-robo-accent-glow)] border border-[var(--color-robo-accent-dim)] rounded-full backdrop-blur-md">
+            <Smartphone size={12} className="text-[var(--color-robo-accent)]" />
+            <span className="text-[9px] font-black tracking-widest text-[var(--color-robo-accent)] uppercase">Remote Link: {roomId}</span>
+          </div>
+        )}
+        <div className="h-full">
+          {renderTabs()}
+        </div>
       </main>
-      <TabBar />
+      {!isRemote && <TabBar />}
     </div>
   );
 }

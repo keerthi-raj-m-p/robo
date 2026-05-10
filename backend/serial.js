@@ -298,6 +298,11 @@ class SerialManager extends EventEmitter {
       case 'hello':
         serialCmd = 'HELLO';
         break;
+      case 'jog':
+        if (typeof command.servo === 'number' && typeof command.diff === 'number') {
+          serialCmd = `J:${command.servo},${command.diff}`;
+        }
+        break;
       default:
         return false;
     }

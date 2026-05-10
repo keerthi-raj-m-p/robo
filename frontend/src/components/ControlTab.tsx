@@ -8,11 +8,11 @@ import dynamic from 'next/dynamic';
 const VirtualRobot = dynamic(() => import('./VirtualRobot'), { ssr: false });
 
 const JOINTS = [
-  { id: 0, name: 'J1 - Base', min: -180, max: 180 },
-  { id: 1, name: 'J2 - Shoulder', min: -90, max: 90 },
+  { id: 0, name: 'J1 - Base', min: 0, max: 180 },
+  { id: 1, name: 'J2 - Shoulder', min: 0, max: 180 },
   { id: 2, name: 'J3 - Elbow', min: 0, max: 180 },
-  { id: 3, name: 'J4 - Wrist Pitch', min: -90, max: 90 },
-  { id: 4, name: 'J5 - Wrist Yaw', min: -90, max: 90 },
+  { id: 3, name: 'J4 - Wrist Pitch', min: 0, max: 180 },
+  { id: 4, name: 'J5 - Wrist Yaw', min: 0, max: 180 },
   { id: 5, name: 'J6 - Gripper', min: 0, max: 90 },
 ];
 
@@ -23,11 +23,16 @@ interface ControlTabProps {
 }
 
 export default function ControlTab({ onSend }: ControlTabProps) {
-  const { jointAngles, targetAngles, setSingleJoint, speed, setSpeed, controlMode, setControlMode } = useRobotStore();
+  const { 
+    jointAngles, targetAngles, setSingleJoint, setTargetAngles, 
+    speed, setSpeed, controlMode, setControlMode, isRemote 
+  } = useRobotStore();
+  
   const lastSendRef = useRef(0);
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
   const joystickRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sendAngles = useCallback((angles: number[]) => {
     const now = Date.now();
@@ -51,14 +56,47 @@ export default function ControlTab({ onSend }: ControlTabProps) {
 
   const handleQuickAction = (action: string) => {
     switch (action) {
-      case 'home': onSend({ type: 'home' }); break;
-      case 'zero': onSend({ type: 'zero' }); break;
-      case 'open': onSend({ type: 'gripper', state: 'open' }); break;
-      case 'close': onSend({ type: 'gripper', state: 'close' }); break;
+      case 'home':
+        onSend({ type: 'home' });
+        setTargetAngles([90, 45, 90, 0, 0, 90]);
+        break;
+      case 'zero':
+        onSend({ type: 'zero' });
+        setTargetAngles([90, 90, 90, 90, 90, 90]);
+        break;
+      case 'open':
+        onSend({ type: 'gripper', state: 'open' });
+        setSingleJoint(5, 90);
+        break;
+      case 'close':
+        onSend({ type: 'gripper', state: 'close' });
+        setSingleJoint(5, 0);
+        break;
     }
   };
 
-  // Joystick handlers
+  const handleJog = useCallback((servo: number, diff: number) => {
+    onSend({ type: 'jog', servo, diff });
+    const current = useRobotStore.getState().targetAngles[servo];
+    const limits = JOINTS[servo] || { min: 0, max: 180 };
+    setSingleJoint(servo, Math.max(limits.min, Math.min(limits.max, current + diff)));
+  }, [onSend, setSingleJoint]);
+
+  const startJogRepeat = (servo: number, diff: number) => {
+    handleJog(servo, diff);
+    if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
+    repeatIntervalRef.current = setInterval(() => {
+      handleJog(servo, diff);
+    }, 100);
+  };
+
+  const stopJogRepeat = () => {
+    if (repeatIntervalRef.current) {
+      clearInterval(repeatIntervalRef.current);
+      repeatIntervalRef.current = null;
+    }
+  };
+
   const handleJoystickMove = useCallback((clientX: number, clientY: number) => {
     if (!joystickRef.current || !isDragging.current) return;
     const rect = joystickRef.current.getBoundingClientRect();
@@ -72,26 +110,22 @@ export default function ControlTab({ onSend }: ControlTabProps) {
     setJoystickPos({ x: dx, y: dy });
   }, []);
 
-  // Joystick continuous movement logic
   useEffect(() => {
     if (controlMode !== 'joystick' || (joystickPos.x === 0 && joystickPos.y === 0)) return;
 
     const interval = setInterval(() => {
-      // Map joystick X to Base (Servo 0) and Y to Shoulder (Servo 1)
-      const sensitivity = 0.1; // Adjust based on feel
+      const sensitivity = 0.1;
       const xDiff = joystickPos.x * sensitivity;
-      const yDiff = -joystickPos.y * sensitivity; // Invert Y
+      const yDiff = -joystickPos.y * sensitivity;
 
       if (Math.abs(xDiff) > 0.5) {
         onSend({ type: 'jog', servo: 0, diff: xDiff });
-        // Update local target for simulation
         const current = useRobotStore.getState().targetAngles[0];
         setSingleJoint(0, Math.max(-180, Math.min(180, current + xDiff)));
       }
 
       if (Math.abs(yDiff) > 0.5) {
         onSend({ type: 'jog', servo: 1, diff: yDiff });
-        // Update local target for simulation
         const current = useRobotStore.getState().targetAngles[1];
         setSingleJoint(1, Math.max(-90, Math.min(90, current + yDiff)));
       }
@@ -108,125 +142,99 @@ export default function ControlTab({ onSend }: ControlTabProps) {
     window.addEventListener('mouseup', onUp);
     window.addEventListener('touchmove', onTouchMove);
     window.addEventListener('touchend', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); window.removeEventListener('touchmove', onTouchMove); window.removeEventListener('touchend', onUp); };
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onUp);
+      if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
+    };
   }, [handleJoystickMove]);
 
   return (
-    <div className="grid grid-cols-[280px_1fr_300px] gap-4 h-full p-4 animate-fadeIn">
-      {/* Left Panel - Joystick & Speed */}
-      <div className="flex flex-col gap-4">
-        {/* Base Control */}
-        <div className="robo-card flex-1">
+    <div className={`grid ${isRemote ? 'grid-cols-1 overflow-y-auto' : 'grid-cols-[280px_1fr_300px]'} gap-4 h-full p-4 animate-fadeIn`}>
+      {/* Joystick & Base Controls (Always visible, first on mobile) */}
+      <div className={`flex flex-col gap-4 ${isRemote ? 'order-2' : 'order-1'}`}>
+        <div className="robo-card flex-1 min-h-[300px] flex flex-col">
           <div className="robo-card-title">BASE CONTROL <span className="text-base cursor-help">ⓘ</span></div>
-          <div className="flex justify-center">
+          <div className="flex-1 flex items-center justify-center">
             <div className="joystick-container" ref={joystickRef}>
-              <span className="joystick-label top-2 left-1/2 -translate-x-1/2">FWD</span>
-              <span className="joystick-label bottom-2 left-1/2 -translate-x-1/2">REV</span>
-              <span className="joystick-label left-2 top-1/2 -translate-y-1/2">LEFT</span>
-              <span className="joystick-label right-2 top-1/2 -translate-y-1/2">RIGHT</span>
-              {/* Crosshairs */}
-              <div className="absolute w-full h-[1px] bg-[var(--color-robo-border)] top-1/2"></div>
-              <div className="absolute h-full w-[1px] bg-[var(--color-robo-border)] left-1/2"></div>
-              {/* Direction arrows */}
-              <div className="absolute top-5 left-1/2 -translate-x-1/2 text-[var(--color-robo-text-muted)] text-lg">↑</div>
-              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 text-[var(--color-robo-text-muted)] text-lg">↓</div>
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--color-robo-text-muted)] text-lg">←</div>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--color-robo-text-muted)] text-lg">→</div>
-              <motion.div
-                className="joystick-knob"
-                style={{ transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)` }}
-                onMouseDown={() => { isDragging.current = true; }}
-                onTouchStart={() => { isDragging.current = true; }}
-              />
+              <button className="joystick-label top-2 left-1/2 -translate-x-1/2" onMouseDown={() => startJogRepeat(1, 2)} onMouseUp={stopJogRepeat} onMouseLeave={stopJogRepeat} onTouchStart={() => startJogRepeat(1, 2)} onTouchEnd={stopJogRepeat}>FWD</button>
+              <button className="joystick-label bottom-2 left-1/2 -translate-x-1/2" onMouseDown={() => startJogRepeat(1, -2)} onMouseUp={stopJogRepeat} onMouseLeave={stopJogRepeat} onTouchStart={() => startJogRepeat(1, -2)} onTouchEnd={stopJogRepeat}>REV</button>
+              <button className="joystick-label left-2 top-1/2 -translate-y-1/2" onMouseDown={() => startJogRepeat(0, -2)} onMouseUp={stopJogRepeat} onMouseLeave={stopJogRepeat} onTouchStart={() => startJogRepeat(0, -2)} onTouchEnd={stopJogRepeat}>LEFT</button>
+              <button className="joystick-label right-2 top-1/2 -translate-y-1/2" onMouseDown={() => startJogRepeat(0, 2)} onMouseUp={stopJogRepeat} onMouseLeave={stopJogRepeat} onTouchStart={() => startJogRepeat(0, 2)} onTouchEnd={stopJogRepeat}>RIGHT</button>
+              <div className="absolute w-full h-[1px] bg-[var(--color-robo-border)] top-1/2 opacity-20"></div>
+              <div className="absolute h-full w-[1px] bg-[var(--color-robo-border)] left-1/2 opacity-20"></div>
+              <motion.div className="joystick-knob shadow-[0_0_20px_var(--color-robo-accent-glow)]" style={{ transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)` }} onMouseDown={() => { isDragging.current = true; }} onTouchStart={() => { isDragging.current = true; }} />
             </div>
           </div>
         </div>
 
-        {/* Speed */}
         <div className="robo-card">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-[var(--color-robo-text-dim)] uppercase tracking-wider">Speed</span>
-            <span className="text-sm font-bold text-[var(--color-robo-text)] mono">{speed}%</span>
+            <span className="text-[10px] font-black text-[var(--color-robo-text-muted)] uppercase tracking-widest">Speed</span>
+            <span className="text-xs font-bold text-[var(--color-robo-accent)] mono">{speed}%</span>
           </div>
           <input type="range" className="robo-slider mb-3" min={0} max={100} value={speed} onChange={(e) => handleSpeedChange(Number(e.target.value))} />
-          <div className="flex gap-2">
-            {SPEED_OPTIONS.map((s) => (
-              <button key={s} className={`speed-btn flex-1 ${speed === s ? 'active' : ''}`} onClick={() => handleSpeedChange(s)}>{s}%</button>
-            ))}
-          </div>
         </div>
+      </div>
 
-        {/* Control Mode */}
+      {/* 3D Visualization (Center on laptop, top on mobile) */}
+      <div className={`flex flex-col gap-4 min-w-0 ${isRemote ? 'order-1 h-[40vh]' : 'order-2'}`}>
+        <div className="robo-card flex-1 flex flex-col border-[var(--color-robo-accent-dim)] shadow-[0_0_20px_var(--color-robo-accent-glow)] overflow-hidden">
+          <div className="flex-1 relative bg-black/40 rounded-t-lg overflow-hidden">
+            <VirtualRobot />
+          </div>
+          {!isRemote && (
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[var(--color-robo-border)] bg-black/20 rounded-b-lg p-3">
+              <div className="relative">
+                <div className="text-[9px] font-black text-[var(--color-robo-text-muted)] uppercase tracking-widest mb-1 opacity-50 italic">Position Vector</div>
+                <div className="text-[11px] text-[var(--color-robo-accent)] mono">X: {(20 + jointAngles[0]/10).toFixed(1)} cm</div>
+                <div className="text-[11px] text-[var(--color-robo-accent)] mono">Y: {(10 + jointAngles[1]/15).toFixed(1)} cm</div>
+              </div>
+              <div className="relative">
+                <div className="text-[9px] font-black text-[var(--color-robo-text-muted)] uppercase tracking-widest mb-1 opacity-50 italic">Attitude Data</div>
+                <div className="text-[11px] text-[var(--color-robo-purple)] mono">P: {Math.round(jointAngles[4] - 90)}°</div>
+                <div className="text-[11px] text-[var(--color-robo-purple)] mono">Y: {Math.round(jointAngles[5] - 45)}°</div>
+              </div>
+              <div className="relative">
+                <div className="text-[9px] font-black text-[var(--color-robo-text-muted)] uppercase tracking-widest mb-1 opacity-50 italic">Status</div>
+                <div className="flex items-center gap-1">
+                  <span className="status-dot status-dot-green"></span>
+                  <span className="text-[10px] text-[var(--color-robo-accent)] font-bold">READY</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Joint Sliders & Quick Actions (Last on mobile) */}
+      <div className={`flex flex-col gap-4 ${isRemote ? 'order-3' : 'order-3'}`}>
         <div className="robo-card">
-          <div className="robo-card-title">CONTROL MODE <span className="text-base cursor-help">ⓘ</span></div>
-          <div className="flex gap-2">
-            <button className={`robo-btn flex-1 ${controlMode === 'joystick' ? 'robo-btn-primary' : 'robo-btn-secondary'}`} onClick={() => setControlMode('joystick')}>🎮 JOYSTICK</button>
-            <button className={`robo-btn flex-1 ${controlMode === 'joint' ? 'robo-btn-primary' : 'robo-btn-secondary'}`} onClick={() => setControlMode('joint')}>🦾 JOINT</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Center - 3D Visualization */}
-      <div className="robo-card flex flex-col">
-        <div className="flex-1 relative w-full h-full min-h-[300px]">
-          <VirtualRobot />
-        </div>
-        {/* Bottom info bar */}
-        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[var(--color-robo-border)]">
-          <div>
-            <div className="text-[10px] font-semibold text-[var(--color-robo-text-muted)] uppercase tracking-wider mb-1">Position</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">X: 21.4 cm</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">Y: 10.8 cm</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">Z: 18.7 cm</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-semibold text-[var(--color-robo-text-muted)] uppercase tracking-wider mb-1">Orientation</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">Roll: 8°</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">Pitch: 26°</div>
-            <div className="text-xs text-[var(--color-robo-text-dim)] mono">Yaw: -35°</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-semibold text-[var(--color-robo-text-muted)] uppercase tracking-wider mb-1">Status</div>
-            <div className="flex items-center gap-1.5 mb-0.5"><span className="status-dot status-dot-green"></span><span className="text-xs text-[var(--color-robo-green)]">Ready</span></div>
-            <div className="text-xs text-[var(--color-robo-text-dim)]">No Errors</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel - Joint Sliders & Quick Actions */}
-      <div className="flex flex-col gap-4">
-        {/* Joint Control */}
-        <div className="robo-card flex-1">
-          <div className="robo-card-title">JOINT CONTROL <span className="text-base cursor-help">ⓘ</span></div>
-          <div className="flex flex-col gap-4">
+          <div className="robo-card-title">JOINT PARAMETERS</div>
+          <div className="flex flex-col gap-3">
             {JOINTS.map((joint) => (
               <div key={joint.id}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-[var(--color-robo-text-dim)]">{joint.name}</span>
-                  <span className="text-xs font-bold text-[var(--color-robo-text)] mono">{Math.round(jointAngles[joint.id])}°</span>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] font-bold text-[var(--color-robo-text-muted)] uppercase tracking-tighter">{joint.name}</span>
+                  <span className="text-[10px] font-black text-[var(--color-robo-accent)] mono">{Math.round(jointAngles[joint.id])}°</span>
                 </div>
-                <input
-                  type="range"
-                  className="robo-slider"
-                  min={joint.min}
-                  max={joint.max}
-                  value={jointAngles[joint.id]}
-                  onChange={(e) => handleJointChange(joint.id, Number(e.target.value))}
-                />
+                <input type="range" className="robo-slider" min={joint.min} max={joint.max} value={jointAngles[joint.id]} onChange={(e) => handleJointChange(joint.id, Number(e.target.value))} />
               </div>
             ))}
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="robo-card">
-          <div className="robo-card-title">QUICK ACTIONS</div>
+          <div className="robo-card-title">PRESETS</div>
           <div className="grid grid-cols-2 gap-2">
-            <button className="robo-btn robo-btn-secondary" onClick={() => handleQuickAction('home')}>🏠 HOME</button>
-            <button className="robo-btn robo-btn-secondary" onClick={() => handleQuickAction('zero')}>🎯 ZERO</button>
-            <button className="robo-btn robo-btn-secondary" onClick={() => handleQuickAction('open')}>✋ OPEN GRIPPER</button>
-            <button className="robo-btn robo-btn-secondary" onClick={() => handleQuickAction('close')}>✊ CLOSE GRIPPER</button>
+            <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('home')}>🏠 HOME</button>
+            <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('zero')}>🎯 ZERO</button>
+            <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('open')}>✋ OPEN</button>
+            <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('close')}>✊ CLOSE</button>
           </div>
+          <button className="w-full mt-2 py-3 bg-[var(--color-robo-red)]/20 border border-[var(--color-robo-red)]/50 rounded-lg text-[var(--color-robo-red)] text-[10px] font-black tracking-[0.2em] hover:bg-[var(--color-robo-red)] hover:text-white transition-all uppercase" onClick={() => onSend({ type: 'stop' })}>Emergency Stop</button>
         </div>
       </div>
     </div>

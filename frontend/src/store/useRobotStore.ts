@@ -59,9 +59,14 @@ interface RobotState {
   programRunning: boolean;
   programPaused: boolean;
   currentStep: number;
+  programConfig: { loopEnabled: boolean; delayBetween: number; speedMult: number; };
   logs: LogEntry[];
   stats: { commandsSent: number; commandsDropped: number; telemetryReceived: number; errors: number; uptime: number; loopRate: number; avgResponse: number; maxResponse: number; packetLoss: number; };
   activeTab: string;
+  roomId: string | null;
+  isRemote: boolean;
+  remoteConnected: boolean;
+  localIp: string | null;
   setConnectionMode: (m: 'usb' | 'wifi' | 'disconnected') => void;
   setSerialPort: (p: string | null) => void;
   setWsConnected: (c: boolean) => void;
@@ -84,6 +89,9 @@ interface RobotState {
   setProgramRunning: (r: boolean) => void;
   setProgramPaused: (p: boolean) => void;
   setCurrentStep: (s: number) => void;
+  setProgramConfig: (c: Partial<RobotState['programConfig']>) => void;
+  setRemoteState: (s: Partial<RobotState>) => void;
+  setRoomInfo: (info: { roomId: string | null; localIp: string | null; isRemote?: boolean }) => void;
 }
 
 const DA = [90, 45, 90, 0, 0, 90];
@@ -104,14 +112,19 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   programRunning: false,
   programPaused: false,
   currentStep: 0,
+  programConfig: { loopEnabled: true, delayBetween: 0.5, speedMult: 100 },
   logs: [],
   stats: { commandsSent: 0, commandsDropped: 0, telemetryReceived: 0, errors: 0, uptime: 8076000, loopRate: 20, avgResponse: 82, maxResponse: 134, packetLoss: 0 },
   activeTab: 'control',
+  roomId: null,
+  isRemote: false,
+  remoteConnected: false,
+  localIp: null,
   setConnectionMode: (mode) => set({ connectionMode: mode }),
   setSerialPort: (port) => set({ serialPort: port }),
   setWsConnected: (connected) => set({ wsConnected: connected }),
   setJointAngles: (angles) => set({ jointAngles: angles }),
-  setTargetAngles: (angles) => set({ targetAngles: angles }),
+  setTargetAngles: (angles) => set({ targetAngles: angles, jointAngles: angles }),
   setSingleJoint: (index, angle) => { const a = [...get().targetAngles]; a[index] = angle; set({ targetAngles: a, jointAngles: a }); },
   setSpeed: (speed) => set({ speed }),
   setControlMode: (mode) => set({ controlMode: mode }),
@@ -135,4 +148,7 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   setProgramRunning: (running) => set({ programRunning: running }),
   setProgramPaused: (paused) => set({ programPaused: paused }),
   setCurrentStep: (step) => set({ currentStep: step }),
+  setProgramConfig: (config) => set({ programConfig: { ...get().programConfig, ...config } }),
+  setRemoteState: (updates) => set((state) => ({ ...state, ...updates })),
+  setRoomInfo: (info) => set({ roomId: info.roomId, localIp: info.localIp, isRemote: info.isRemote ?? get().isRemote }),
 }));

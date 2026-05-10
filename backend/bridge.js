@@ -98,6 +98,9 @@ class Bridge {
       }
     } else {
       this.stats.commandsDropped++;
+      if (this.stats.commandsDropped % 10 === 1) { // Avoid spamming
+        this.addLog('system', '⚠ COMMAND DROPPED: No active hardware connection');
+      }
     }
   }
 

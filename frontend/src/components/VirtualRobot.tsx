@@ -6,13 +6,15 @@ import { OrbitControls, Environment, Grid, ContactShadows } from '@react-three/d
 import * as THREE from 'three';
 import { useRobotStore } from '@/store/useRobotStore';
 
-// Materials defined outside to prevent recreation on every render
-const baseMaterial = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.2, metalness: 0.8 });
-const jointMaterial = new THREE.MeshStandardMaterial({ color: '#00ff88', roughness: 0.4, metalness: 0.5 });
-const linkMaterial = new THREE.MeshStandardMaterial({ color: '#333333', roughness: 0.3, metalness: 0.7 });
 
 function RobotArm() {
   const { jointAngles } = useRobotStore();
+  
+  // Materials defined with useMemo for stability and theme consistency
+  const baseMaterial = React.useMemo(() => new THREE.MeshStandardMaterial({ color: '#0d1117', roughness: 0.2, metalness: 0.8 }), []);
+  const jointMaterial = React.useMemo(() => new THREE.MeshStandardMaterial({ color: '#79c0ff', roughness: 0.4, metalness: 0.5 }), []);
+  const linkMaterial = React.useMemo(() => new THREE.MeshStandardMaterial({ color: '#30363d', roughness: 0.3, metalness: 0.7 }), []);
+  const highlightMaterial = React.useMemo(() => new THREE.MeshStandardMaterial({ color: '#d2a8ff', emissive: '#d2a8ff', emissiveIntensity: 0.5 }), []);
   
   // Refs for animation
   const j1Ref = useRef<THREE.Group>(null);
@@ -88,7 +90,7 @@ function RobotArm() {
                 </mesh>
                 
                 {/* Gripper Base */}
-                <mesh material={linkMaterial} position={[0, 0.3, 0]} castShadow>
+                <mesh material={highlightMaterial} position={[0, 0.3, 0]} castShadow>
                   <boxGeometry args={[0.8, 0.2, 0.4]} />
                 </mesh>
 
@@ -113,9 +115,10 @@ function RobotArm() {
 
 export default function VirtualRobot() {
   return (
-    <div className="w-full h-full relative bg-transparent rounded-lg overflow-hidden border border-[var(--color-robo-border)]">
-      <Canvas shadows camera={{ position: [8, 6, 8], fov: 40 }}>
-        <ambientLight intensity={0.5} />
+    <div className="w-full h-full relative bg-[#05070a] rounded-lg overflow-hidden border border-[var(--color-robo-border)]">
+      <Canvas shadows camera={{ position: [10, 8, 10], fov: 35 }}>
+        <color attach="background" args={['#05070a']} />
+        <ambientLight intensity={0.7} />
         <directionalLight 
           position={[10, 15, 10]} 
           intensity={1.5} 
@@ -128,23 +131,21 @@ export default function VirtualRobot() {
           shadow-camera-top={10}
           shadow-camera-bottom={-10}
         />
-        <pointLight position={[-10, 5, -10]} intensity={0.8} color="#00ff88" />
+        <pointLight position={[-10, 5, -10]} intensity={0.8} color="#79c0ff" />
+        <pointLight position={[0, 5, 0]} intensity={0.5} color="#d2a8ff" />
         
         <RobotArm />
         
-        <Environment preset="city" />
-        
-        {/* Ground shadow and grid for that high-tech look */}
         <ContactShadows position={[0, -2, 0]} opacity={0.6} scale={15} blur={2.5} far={4} color="#000000" />
         <Grid 
           position={[0, -2.01, 0]}
           args={[20, 20]} 
           cellSize={1} 
           cellThickness={1} 
-          cellColor="#333" 
+          cellColor="#30363d" 
           sectionSize={5} 
           sectionThickness={1.5} 
-          sectionColor="#00ff88" 
+          sectionColor="#79c0ff" 
           fadeDistance={30} 
         />
         
@@ -156,8 +157,8 @@ export default function VirtualRobot() {
           autoRotate={false}
         />
       </Canvas>
-      <div className="absolute top-4 left-4 bg-black/60 px-2 py-1 rounded text-[10px] text-[var(--color-robo-green)] font-semibold border border-[var(--color-robo-border)]">
-        LIVE 3D PREVIEW
+      <div className="absolute top-4 left-4 bg-black/60 px-2 py-1 rounded text-[10px] text-[var(--color-robo-accent)] font-bold border border-[var(--color-robo-border)] uppercase tracking-widest holo-glow">
+        Live 3D Telemetry
       </div>
     </div>
   );

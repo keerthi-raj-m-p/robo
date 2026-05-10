@@ -16,7 +16,7 @@ export default function TopBar() {
           <h1 className="text-base font-bold tracking-wide text-[var(--color-robo-text)]">ROBOTIC ARM</h1>
           <div className="flex items-center gap-1.5">
             <span className={`status-dot ${connectionMode !== 'disconnected' ? 'status-dot-green' : 'status-dot-red'}`}></span>
-            <span className={`text-xs font-medium ${connectionMode !== 'disconnected' ? 'text-[var(--color-robo-green)]' : 'text-[var(--color-robo-red)]'}`}>{modeLabel}</span>
+            <span className={`text-xs font-medium ${connectionMode !== 'disconnected' ? 'text-[var(--color-robo-accent)]' : 'text-[var(--color-robo-red)]'}`}>{modeLabel}</span>
           </div>
         </div>
       </div>
@@ -28,8 +28,8 @@ export default function TopBar() {
 
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 bg-[var(--color-robo-bg)] border border-[var(--color-robo-border)] rounded-lg px-3 py-1.5">
-          <div className="w-8 h-4 rounded-sm border border-[var(--color-robo-green)] relative overflow-hidden">
-            <div className="absolute inset-0 bg-[var(--color-robo-green)]" style={{ width: '86%' }}></div>
+          <div className="w-8 h-4 rounded-sm border border-[var(--color-robo-accent)] relative overflow-hidden">
+            <div className="absolute inset-0 bg-[var(--color-robo-accent)]" style={{ width: '86%' }}></div>
           </div>
           <div className="text-right">
             <div className="text-[10px] text-[var(--color-robo-text-muted)] leading-tight">Arm Battery</div>

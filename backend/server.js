@@ -15,6 +15,7 @@ const { WebSocketServer } = require('ws');
 const cors = require('cors');
 const SerialManager = require('./serial');
 const Bridge = require('./bridge');
+const RemoteManager = require('./remote');
 
 // Configuration
 const PORT = process.env.PORT || 3001;
@@ -33,6 +34,9 @@ const serialManager = new SerialManager();
 
 // Initialize Bridge
 const bridge = new Bridge(serialManager);
+
+// Initialize Remote Manager (Socket.IO)
+const remoteManager = new RemoteManager(server, bridge);
 
 // Create WebSocket Server
 const wss = new WebSocketServer({ server, path: WS_PATH });

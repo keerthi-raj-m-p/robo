@@ -6,23 +6,23 @@
    ============================================================ */
 
 @theme {
-  --color-robo-bg: #080c08;
-  --color-robo-card: #0f1a0f;
-  --color-robo-card-hover: #142014;
-  --color-robo-border: #1a2e1a;
-  --color-robo-border-light: #243824;
-  --color-robo-green: #22c55e;
-  --color-robo-green-dim: #166534;
-  --color-robo-green-glow: rgba(34, 197, 94, 0.15);
-  --color-robo-red: #ef4444;
-  --color-robo-yellow: #eab308;
-  --color-robo-orange: #f97316;
+  --color-robo-bg: #0b0f1a;
+  --color-robo-card: rgba(17, 24, 39, 0.7);
+  --color-robo-card-hover: rgba(31, 41, 55, 0.8);
+  --color-robo-border: rgba(51, 65, 85, 0.5);
+  --color-robo-border-light: rgba(94, 234, 212, 0.3);
+  --color-robo-accent: #0ed7b5;
+  --color-robo-accent-dim: #0d9488;
+  --color-robo-accent-glow: rgba(14, 215, 181, 0.15);
+  --color-robo-red: #ff4d4d;
+  --color-robo-yellow: #ffcc00;
+  --color-robo-orange: #ff8c00;
   --color-robo-blue: #3b82f6;
   --color-robo-purple: #a855f7;
-  --color-robo-text: #e2e8f0;
+  --color-robo-text: #f8fafc;
   --color-robo-text-dim: #94a3b8;
-  --color-robo-text-muted: #64748b;
-  --color-robo-surface: #0d160d;
+  --color-robo-text-muted: #475569;
+  --color-robo-surface: #0f172a;
 }
 
 /* ============================================================
@@ -48,7 +48,8 @@
   border-radius: 3px;
 }
 
-html, body {
+html,
+body {
   background-color: var(--color-robo-bg);
   color: var(--color-robo-text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -65,11 +66,14 @@ html, body {
   border: 1px solid var(--color-robo-border);
   border-radius: 12px;
   padding: 16px;
-  transition: border-color 0.2s ease;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .robo-card:hover {
   border-color: var(--color-robo-border-light);
+  box-shadow: 0 8px 32px -1px rgba(14, 215, 181, 0.1);
 }
 
 .robo-card-title {
@@ -104,26 +108,26 @@ html, body {
   appearance: none;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: var(--color-robo-green);
+  border-radius: 4px;
+  background: var(--color-robo-accent);
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 12px var(--color-robo-accent-glow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .robo-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 14px rgba(34, 197, 94, 0.6);
+  transform: scale(1.1);
+  box-shadow: 0 0 18px var(--color-robo-accent);
 }
 
 .robo-slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: var(--color-robo-green);
+  border-radius: 4px;
+  background: var(--color-robo-accent);
   cursor: pointer;
   border: none;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 12px var(--color-robo-accent-glow);
 }
 
 /* ============================================================
@@ -146,14 +150,17 @@ html, body {
 }
 
 .robo-btn-primary {
-  background: var(--color-robo-green);
-  color: #000;
-  border-color: var(--color-robo-green);
+  background: var(--color-robo-accent);
+  color: #0b0f1a;
+  border-color: var(--color-robo-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .robo-btn-primary:hover {
-  background: #16a34a;
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  background: var(--color-robo-accent-dim);
+  box-shadow: 0 0 24px var(--color-robo-accent-glow);
+  transform: translateY(-1px);
 }
 
 .robo-btn-secondary {
@@ -200,9 +207,9 @@ html, body {
 }
 
 .status-dot-green {
-  background: var(--color-robo-green);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
-  animation: pulse-green 2s ease-in-out infinite;
+  background: var(--color-robo-accent);
+  box-shadow: 0 0 8px var(--color-robo-accent);
+  animation: pulse-accent 2s ease-in-out infinite;
 }
 
 .status-dot-red {
@@ -215,9 +222,18 @@ html, body {
   box-shadow: 0 0 6px rgba(234, 179, 8, 0.6);
 }
 
-@keyframes pulse-green {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes pulse-accent {
+
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    filter: brightness(1.2);
+  }
 }
 
 /* ============================================================
@@ -277,11 +293,25 @@ html, body {
   color: var(--color-robo-text-muted);
 }
 
-.log-system { color: var(--color-robo-blue); }
-.log-tx { color: var(--color-robo-green); }
-.log-rx { color: var(--color-robo-purple); }
-.log-error { color: var(--color-robo-red); }
-.log-cmd { color: var(--color-robo-yellow); }
+.log-system {
+  color: var(--color-robo-blue);
+}
+
+.log-tx {
+  color: var(--color-robo-accent);
+}
+
+.log-rx {
+  color: var(--color-robo-purple);
+}
+
+.log-error {
+  color: var(--color-robo-red);
+}
+
+.log-cmd {
+  color: var(--color-robo-yellow);
+}
 
 /* ============================================================
    JOYSTICK
@@ -343,16 +373,17 @@ html, body {
 
 .tab-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 20px;
+  gap: 8px;
+  padding: 10px 24px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--color-robo-text-muted);
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-item:hover {
@@ -361,11 +392,13 @@ html, body {
 }
 
 .tab-item.active {
-  color: var(--color-robo-green);
+  color: var(--color-robo-accent);
+  background: var(--color-robo-accent-glow);
+  box-shadow: inset 0 0 0 1px var(--color-robo-accent-dim);
 }
 
 .tab-item.active svg {
-  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+  filter: drop-shadow(0 0 4px var(--color-robo-accent));
 }
 
 /* ============================================================
@@ -389,9 +422,9 @@ html, body {
 }
 
 .speed-btn.active {
-  background: var(--color-robo-green);
-  border-color: var(--color-robo-green);
-  color: #000;
+  background: var(--color-robo-accent);
+  border-color: var(--color-robo-accent);
+  color: #0b0f1a;
 }
 
 /* ============================================================
@@ -408,7 +441,7 @@ html, body {
 .servo-bar-fill {
   height: 100%;
   border-radius: 3px;
-  background: var(--color-robo-green);
+  background: var(--color-robo-accent);
   transition: width 0.1s linear;
 }
 
@@ -427,7 +460,7 @@ html, body {
 }
 
 .toggle-switch.active {
-  background: var(--color-robo-green);
+  background: var(--color-robo-accent);
 }
 
 .toggle-switch::after {
@@ -451,13 +484,27 @@ html, body {
    ============================================================ */
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fadeIn {

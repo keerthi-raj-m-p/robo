@@ -28,6 +28,7 @@ declare global {
 }
 
 export default function GestureTab({ onSend }: GestureTabProps) {
+  const { gestureMode, setGestureMode, setTargetAngles, setSingleJoint } = useRobotStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLive, setIsLive] = useState(false);
@@ -99,15 +100,15 @@ export default function GestureTab({ onSend }: GestureTabProps) {
 
         // Draw connections (simple version)
         const connections = [
-          [0,1],[1,2],[2,3],[3,4], // Thumb
-          [0,5],[5,6],[6,7],[7,8], // Index
-          [5,9],[9,10],[10,11],[11,12], // Middle
-          [9,13],[13,14],[14,15],[15,16], // Ring
-          [13,17],[17,18],[18,19],[19,20], // Pinky
-          [0,17] // Palm base
+          [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+          [0, 5], [5, 6], [6, 7], [7, 8], // Index
+          [5, 9], [9, 10], [10, 11], [11, 12], // Middle
+          [9, 13], [13, 14], [14, 15], [15, 16], // Ring
+          [13, 17], [17, 18], [18, 19], [19, 20], // Pinky
+          [0, 17] // Palm base
         ];
 
-        ctx.strokeStyle = '#00ff00';
+        ctx.strokeStyle = '#0ed7b5';
         ctx.lineWidth = 2;
         for (const [startIdx, endIdx] of connections) {
           const start = landmarks[startIdx];
@@ -122,7 +123,7 @@ export default function GestureTab({ onSend }: GestureTabProps) {
         for (const landmark of landmarks) {
           ctx.beginPath();
           ctx.arc(landmark.x * canvasElement.width, landmark.y * canvasElement.height, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = '#00ff00';
+          ctx.fillStyle = '#0ed7b5';
           ctx.fill();
         }
 
@@ -136,13 +137,13 @@ export default function GestureTab({ onSend }: GestureTabProps) {
 
         // 1. Base (S0) - Map wrist X to [0, 180] degrees (reversed for mirror)
         const baseAngle = Math.round((1 - wrist.x) * 180);
-        
+
         // 2. Shoulder (S1) - Map wrist Y to [0, 180] degrees (inverted)
         const shoulderAngle = Math.round((1 - wrist.y) * 180);
-        
+
         // 3. Elbow (S2) - Map wrist Z (depth) to [0, 180] degrees
         // wrist.z is usually around -0.1 to -0.5
-        const elbowAngle = Math.round(Math.abs(wrist.z) * 400 + 45); 
+        const elbowAngle = Math.round(Math.abs(wrist.z) * 400 + 45);
 
         // 4. Wrist Roll (S3) - Angle between Index and Pinky bases
         const rollRad = Math.atan2(pinkyBase.y - indexBase.y, pinkyBase.x - indexBase.x);
@@ -173,12 +174,15 @@ export default function GestureTab({ onSend }: GestureTabProps) {
           setCurrentGesture('Neutral');
         }
 
-        // Send move command with all synchronized angles
-        throttledSend({ type: 'move', angles: newAngles });
-        
-        // Optimistically update simulation
-        const store = useRobotStore.getState();
-        store.setTargetAngles(newAngles);
+        // Only send and update store if gesture mode is active
+        if (gestureMode) {
+          // Send move command with all synchronized angles
+          throttledSend({ type: 'move', angles: newAngles });
+
+          // Optimistically update simulation
+          const store = useRobotStore.getState();
+          store.setTargetAngles(newAngles);
+        }
 
       } else {
         setHandStatus('No Hand Detected');
@@ -198,22 +202,35 @@ export default function GestureTab({ onSend }: GestureTabProps) {
     });
 
     camera.start().catch((e: any) => {
-        console.error("Camera failed to start:", e);
-        setHandStatus("Camera Error");
+      console.error("Camera failed to start:", e);
+      setHandStatus("Camera Error");
     });
 
     return () => {
       camera.stop();
       hands.close();
+      setIsLive(false);
     };
-  }, [scriptsLoaded]); // re-run effect when scripts load
+  }, [scriptsLoaded, gestureMode]); // re-run effect when scripts load or mode changes
 
   const handleQuickAction = (action: string) => {
     switch (action) {
-      case 'home': onSend({ type: 'home' }); break;
-      case 'zero': onSend({ type: 'zero' }); break;
-      case 'open': onSend({ type: 'gripper', state: 'open' }); break;
-      case 'close': onSend({ type: 'gripper', state: 'close' }); break;
+      case 'home':
+        onSend({ type: 'home' });
+        setTargetAngles([90, 45, 90, 0, 0, 90]);
+        break;
+      case 'zero':
+        onSend({ type: 'zero' });
+        setTargetAngles([90, 90, 90, 90, 90, 90]);
+        break;
+      case 'open':
+        onSend({ type: 'gripper', state: 'open' });
+        setSingleJoint(5, 90);
+        break;
+      case 'close':
+        onSend({ type: 'gripper', state: 'close' });
+        setSingleJoint(5, 0);
+        break;
     }
   };
 
@@ -230,14 +247,14 @@ export default function GestureTab({ onSend }: GestureTabProps) {
           <div className="aspect-[4/3] bg-[var(--color-robo-bg)] border border-[var(--color-robo-border)] rounded-lg flex items-center justify-center relative overflow-hidden">
             <video ref={videoRef} className="hidden" playsInline></video>
             <canvas ref={canvasRef} width="640" height="480" className="w-full h-full object-cover transform scale-x-[-1]"></canvas>
-            
+
             <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 rounded px-2 py-0.5">
               <span className={`status-dot ${isLive ? 'status-dot-green' : 'status-dot-red'}`}></span>
-              <span className={`text-[10px] font-semibold ${isLive ? 'text-[var(--color-robo-green)]' : 'text-red-500'}`}>
+              <span className={`text-[10px] font-semibold ${isLive ? 'text-[var(--color-robo-accent)]' : 'text-red-500'}`}>
                 {isLive ? 'Live' : 'Offline'}
               </span>
             </div>
-            
+
             {!isLive && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
                 <div className="text-5xl mb-2">🤚</div>
@@ -253,7 +270,7 @@ export default function GestureTab({ onSend }: GestureTabProps) {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">🤚</span>
             <div>
-              <div className={`text-sm font-semibold ${confidence > 0 ? 'text-[var(--color-robo-green)]' : 'text-[var(--color-robo-text-muted)]'}`}>
+              <div className={`text-sm font-semibold ${confidence > 0 ? 'text-[var(--color-robo-accent)]' : 'text-[var(--color-robo-text-muted)]'}`}>
                 {handStatus}
               </div>
               <div className="text-xs text-[var(--color-robo-text-muted)]">
@@ -262,15 +279,25 @@ export default function GestureTab({ onSend }: GestureTabProps) {
             </div>
           </div>
           <div className="h-1.5 bg-[var(--color-robo-border)] rounded-full overflow-hidden">
-            <div className="h-full bg-[var(--color-robo-green)] rounded-full transition-all duration-300" style={{ width: `${Math.round(confidence * 100)}%` }}></div>
+            <div className="h-full bg-[var(--color-robo-accent)] rounded-full transition-all duration-300" style={{ width: `${Math.round(confidence * 100)}%` }}></div>
           </div>
         </div>
 
         <div className="robo-card">
           <div className="robo-card-title">CONTROL MODE</div>
           <div className="flex gap-2">
-            <button className="robo-btn robo-btn-primary flex-1">🤚 GESTURE</button>
-            <button className="robo-btn robo-btn-secondary flex-1">🎛️ MANUAL</button>
+            <button
+              className={`robo-btn flex-1 ${gestureMode ? 'robo-btn-primary' : 'robo-btn-secondary'}`}
+              onClick={() => setGestureMode(true)}
+            >
+              🤚 GESTURE
+            </button>
+            <button
+              className={`robo-btn flex-1 ${!gestureMode ? 'robo-btn-primary' : 'robo-btn-secondary'}`}
+              onClick={() => setGestureMode(false)}
+            >
+              🎛️ MANUAL
+            </button>
           </div>
         </div>
       </div>
@@ -279,13 +306,13 @@ export default function GestureTab({ onSend }: GestureTabProps) {
       <div className="robo-card flex flex-col relative group">
         <div className="flex-1 relative w-full h-full min-h-[300px]">
           <VirtualRobot />
-          
+
           {/* Gesture HUD Overlay */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none z-10">
-            <div className={`px-4 py-2 rounded-full border border-[var(--color-robo-green)] bg-black/60 backdrop-blur-md transition-all ${currentGesture !== 'Neutral' ? 'scale-110 opacity-100 shadow-[0_0_20px_rgba(0,255,136,0.2)]' : 'scale-100 opacity-60'}`}>
-               <span className="text-xs font-bold text-[var(--color-robo-green)] uppercase tracking-[0.2em]">
-                 {currentGesture}
-               </span>
+            <div className={`px-4 py-2 rounded-full border border-[var(--color-robo-accent)] bg-black/60 backdrop-blur-md transition-all ${currentGesture !== 'Neutral' ? 'scale-110 opacity-100 shadow-[0_0_20px_rgba(14,215,181,0.2)]' : 'scale-100 opacity-60'}`}>
+              <span className="text-xs font-bold text-[var(--color-robo-accent)] uppercase tracking-[0.2em]">
+                {currentGesture}
+              </span>
             </div>
           </div>
         </div>
@@ -293,10 +320,10 @@ export default function GestureTab({ onSend }: GestureTabProps) {
           <div>
             <div className="text-[10px] font-semibold text-[var(--color-robo-text-muted)] uppercase tracking-wider mb-1">Status</div>
             <div className="flex items-center gap-1.5 mb-0.5">
-               <span className={`status-dot ${isLive ? 'status-dot-green' : 'status-dot-red'}`}></span>
-               <span className={`text-xs ${isLive ? 'text-[var(--color-robo-green)]' : 'text-red-500'}`}>
-                 {isLive ? 'Tracking Active' : 'Waiting...'}
-               </span>
+              <span className={`status-dot ${isLive ? 'status-dot-green' : 'status-dot-red'}`}></span>
+              <span className={`text-xs ${isLive ? 'text-[var(--color-robo-accent)]' : 'text-red-500'}`}>
+                {isLive ? 'Tracking Active' : 'Waiting...'}
+              </span>
             </div>
           </div>
         </div>
