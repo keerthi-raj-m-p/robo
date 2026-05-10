@@ -1,0 +1,15 @@
+{
+  "name": "robotic-arm-system",
+  "version": "1.0.0",
+  "description": "Real-time robotic arm control system with ESP32, Node.js backend, and Next.js frontend",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm start",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "build": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

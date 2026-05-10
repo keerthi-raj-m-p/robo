@@ -1,0 +1,491 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ROBOTIC ARM CONTROL SYSTEM - Design System
+   Dark industrial theme with green accent
+   ============================================================ */
+
+@theme {
+  --color-robo-bg: #080c08;
+  --color-robo-card: #0f1a0f;
+  --color-robo-card-hover: #142014;
+  --color-robo-border: #1a2e1a;
+  --color-robo-border-light: #243824;
+  --color-robo-green: #22c55e;
+  --color-robo-green-dim: #166534;
+  --color-robo-green-glow: rgba(34, 197, 94, 0.15);
+  --color-robo-red: #ef4444;
+  --color-robo-yellow: #eab308;
+  --color-robo-orange: #f97316;
+  --color-robo-blue: #3b82f6;
+  --color-robo-purple: #a855f7;
+  --color-robo-text: #e2e8f0;
+  --color-robo-text-dim: #94a3b8;
+  --color-robo-text-muted: #64748b;
+  --color-robo-surface: #0d160d;
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-robo-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-robo-border);
+  border-radius: 3px;
+}
+
+html, body {
+  background-color: var(--color-robo-bg);
+  color: var(--color-robo-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* ============================================================
+   CARD COMPONENT
+   ============================================================ */
+
+.robo-card {
+  background: var(--color-robo-card);
+  border: 1px solid var(--color-robo-border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.robo-card:hover {
+  border-color: var(--color-robo-border-light);
+}
+
+.robo-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-robo-text-dim);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ============================================================
+   SLIDER STYLES
+   ============================================================ */
+
+.robo-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-robo-border);
+  outline: none;
+  transition: background 0.2s;
+}
+
+.robo-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-robo-green);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.robo-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.6);
+}
+
+.robo-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-robo-green);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+/* ============================================================
+   BUTTON STYLES
+   ============================================================ */
+
+.robo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.robo-btn-primary {
+  background: var(--color-robo-green);
+  color: #000;
+  border-color: var(--color-robo-green);
+}
+
+.robo-btn-primary:hover {
+  background: #16a34a;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+.robo-btn-secondary {
+  background: var(--color-robo-card);
+  color: var(--color-robo-text);
+  border-color: var(--color-robo-border);
+}
+
+.robo-btn-secondary:hover {
+  border-color: var(--color-robo-border-light);
+  background: var(--color-robo-card-hover);
+}
+
+.robo-btn-danger {
+  background: transparent;
+  color: var(--color-robo-red);
+  border-color: var(--color-robo-red);
+}
+
+.robo-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.robo-btn-ghost {
+  background: transparent;
+  color: var(--color-robo-text-dim);
+  border-color: transparent;
+}
+
+.robo-btn-ghost:hover {
+  color: var(--color-robo-text);
+  background: var(--color-robo-card);
+}
+
+/* ============================================================
+   STATUS INDICATORS
+   ============================================================ */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-green {
+  background: var(--color-robo-green);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+.status-dot-red {
+  background: var(--color-robo-red);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.status-dot-yellow {
+  background: var(--color-robo-yellow);
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.6);
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================================
+   TABLE STYLES
+   ============================================================ */
+
+.robo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.robo-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-robo-text-muted);
+  border-bottom: 1px solid var(--color-robo-border);
+}
+
+.robo-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-robo-border);
+  color: var(--color-robo-text-dim);
+}
+
+.robo-table tr:hover td {
+  background: var(--color-robo-card-hover);
+}
+
+/* ============================================================
+   LOG CONSOLE
+   ============================================================ */
+
+.log-console {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  background: var(--color-robo-bg);
+  border: 1px solid var(--color-robo-border);
+  border-radius: 8px;
+  padding: 10px;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+.log-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-time {
+  color: var(--color-robo-text-muted);
+}
+
+.log-system { color: var(--color-robo-blue); }
+.log-tx { color: var(--color-robo-green); }
+.log-rx { color: var(--color-robo-purple); }
+.log-error { color: var(--color-robo-red); }
+.log-cmd { color: var(--color-robo-yellow); }
+
+/* ============================================================
+   JOYSTICK
+   ============================================================ */
+
+.joystick-container {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: var(--color-robo-bg);
+  border: 2px solid var(--color-robo-border);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+
+.joystick-knob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--color-robo-card);
+  border: 2px solid var(--color-robo-border-light);
+  cursor: grab;
+  transition: box-shadow 0.2s ease;
+  position: absolute;
+  z-index: 2;
+}
+
+.joystick-knob:active {
+  cursor: grabbing;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  border-color: var(--color-robo-green);
+}
+
+.joystick-label {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-robo-text-muted);
+  letter-spacing: 0.1em;
+}
+
+/* ============================================================
+   TAB BAR
+   ============================================================ */
+
+.tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--color-robo-card);
+  border-top: 1px solid var(--color-robo-border);
+  padding: 8px 16px;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-robo-text-muted);
+  transition: all 0.2s ease;
+}
+
+.tab-item:hover {
+  color: var(--color-robo-text-dim);
+  background: var(--color-robo-card-hover);
+}
+
+.tab-item.active {
+  color: var(--color-robo-green);
+}
+
+.tab-item.active svg {
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+}
+
+/* ============================================================
+   SPEED BUTTONS
+   ============================================================ */
+
+.speed-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-robo-card);
+  border: 1px solid var(--color-robo-border);
+  color: var(--color-robo-text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.speed-btn:hover {
+  border-color: var(--color-robo-border-light);
+}
+
+.speed-btn.active {
+  background: var(--color-robo-green);
+  border-color: var(--color-robo-green);
+  color: #000;
+}
+
+/* ============================================================
+   PROGRESS BAR (for servo monitor)
+   ============================================================ */
+
+.servo-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-robo-border);
+  overflow: hidden;
+}
+
+.servo-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-robo-green);
+  transition: width 0.1s linear;
+}
+
+/* ============================================================
+   TOGGLE SWITCH
+   ============================================================ */
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-robo-border);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggle-switch.active {
+  background: var(--color-robo-green);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* ============================================================
+   RECHARTS OVERRIDES
+   ============================================================ */
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--color-robo-border) !important;
+}
+
+.recharts-text {
+  fill: var(--color-robo-text-muted) !important;
+  font-size: 10px !important;
+}
+
+/* ============================================================
+   MONO VALUES
+   ============================================================ */
+
+.mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
