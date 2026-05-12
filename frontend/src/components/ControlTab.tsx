@@ -220,7 +220,9 @@ export default function ControlTab({ onSend }: ControlTabProps) {
                   <span className="text-[10px] font-bold text-[var(--color-robo-text-muted)] uppercase tracking-tighter">{joint.name}</span>
                   <span className="text-[10px] font-black text-[var(--color-robo-accent)] mono">{Math.round(jointAngles[joint.id])}°</span>
                 </div>
-                <input type="range" className="robo-slider" min={joint.min} max={joint.max} value={jointAngles[joint.id]} onChange={(e) => handleJointChange(joint.id, Number(e.target.value))} />
+                <div className={isRemote ? "py-4" : "py-1"}>
+                  <input type="range" className="robo-slider" min={joint.min} max={joint.max} value={jointAngles[joint.id]} onChange={(e) => handleJointChange(joint.id, Number(e.target.value))} />
+                </div>
               </div>
             ))}
           </div>
@@ -233,6 +235,17 @@ export default function ControlTab({ onSend }: ControlTabProps) {
             <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('zero')}>🎯 ZERO</button>
             <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('open')}>✋ OPEN</button>
             <button className="robo-btn robo-btn-secondary py-2 text-[10px] font-bold" onClick={() => handleQuickAction('close')}>✊ CLOSE</button>
+            {isRemote && (
+              <button 
+                className="col-span-2 robo-btn robo-btn-primary py-2.5 text-[10px] font-bold mt-2" 
+                onClick={() => {
+                  if (document.fullscreenElement) document.exitFullscreen();
+                  else document.documentElement.requestFullscreen();
+                }}
+              >
+                📺 TOGGLE FULLSCREEN
+              </button>
+            )}
           </div>
           <button className="w-full mt-2 py-3 bg-[var(--color-robo-red)]/20 border border-[var(--color-robo-red)]/50 rounded-lg text-[var(--color-robo-red)] text-[10px] font-black tracking-[0.2em] hover:bg-[var(--color-robo-red)] hover:text-white transition-all uppercase" onClick={() => onSend({ type: 'stop' })}>Emergency Stop</button>
         </div>

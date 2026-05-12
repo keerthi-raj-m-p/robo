@@ -43,6 +43,21 @@ export interface AngleHistory {
   j4: number; j5: number; j6: number;
 }
 
+export interface DeviceInfo {
+  id: string;
+  joinedAt: number;
+  lastSeen: number;
+  userAgent: string;
+  label: string;
+}
+
+export interface RemoteLogEntry {
+  time: string;
+  message: string;
+  level: 'info' | 'warn' | 'critical';
+  timestamp: number;
+}
+
 interface RobotState {
   connectionMode: 'usb' | 'wifi' | 'disconnected';
   serialPort: string | null;
@@ -63,10 +78,18 @@ interface RobotState {
   logs: LogEntry[];
   stats: { commandsSent: number; commandsDropped: number; telemetryReceived: number; errors: number; uptime: number; loopRate: number; avgResponse: number; maxResponse: number; packetLoss: number; };
   activeTab: string;
+  // Remote / Room state
   roomId: string | null;
   isRemote: boolean;
-  remoteConnected: boolean;
+  connectedRemotes: number;
+  syncStatus: 'stable' | 'syncing' | 'offline';
   localIp: string | null;
+  hostName: string | null;
+  connectedDevices: DeviceInfo[];
+  remoteLatency: number;
+  emergencyStopActive: boolean;
+  remoteLogs: RemoteLogEntry[];
+  // Actions
   setConnectionMode: (m: 'usb' | 'wifi' | 'disconnected') => void;
   setSerialPort: (p: string | null) => void;
   setWsConnected: (c: boolean) => void;
@@ -91,7 +114,13 @@ interface RobotState {
   setCurrentStep: (s: number) => void;
   setProgramConfig: (c: Partial<RobotState['programConfig']>) => void;
   setRemoteState: (s: Partial<RobotState>) => void;
-  setRoomInfo: (info: { roomId: string | null; localIp: string | null; isRemote?: boolean }) => void;
+  setRoomInfo: (info: { roomId: string | null; localIp: string | null; hostName?: string | null; isRemote?: boolean }) => void;
+  setSyncStats: (stats: { connectedRemotes: number; syncStatus: RobotState['syncStatus'] }) => void;
+  setConnectedDevices: (devices: DeviceInfo[]) => void;
+  setRemoteLatency: (latency: number) => void;
+  setEmergencyStop: (active: boolean) => void;
+  addRemoteLog: (entry: RemoteLogEntry) => void;
+  clearRemoteLogs: () => void;
 }
 
 const DA = [90, 45, 90, 0, 0, 90];
@@ -116,10 +145,18 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   logs: [],
   stats: { commandsSent: 0, commandsDropped: 0, telemetryReceived: 0, errors: 0, uptime: 8076000, loopRate: 20, avgResponse: 82, maxResponse: 134, packetLoss: 0 },
   activeTab: 'control',
+  // Remote / Room state
   roomId: null,
   isRemote: false,
-  remoteConnected: false,
+  connectedRemotes: 0,
+  syncStatus: 'offline',
   localIp: null,
+  hostName: null,
+  connectedDevices: [],
+  remoteLatency: 0,
+  emergencyStopActive: false,
+  remoteLogs: [],
+  // Actions
   setConnectionMode: (mode) => set({ connectionMode: mode }),
   setSerialPort: (port) => set({ serialPort: port }),
   setWsConnected: (connected) => set({ wsConnected: connected }),
@@ -150,5 +187,20 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   setCurrentStep: (step) => set({ currentStep: step }),
   setProgramConfig: (config) => set({ programConfig: { ...get().programConfig, ...config } }),
   setRemoteState: (updates) => set((state) => ({ ...state, ...updates })),
-  setRoomInfo: (info) => set({ roomId: info.roomId, localIp: info.localIp, isRemote: info.isRemote ?? get().isRemote }),
+  setRoomInfo: (info) => set({ 
+    roomId: info.roomId, 
+    localIp: info.localIp, 
+    hostName: info.hostName ?? get().hostName,
+    isRemote: info.isRemote ?? get().isRemote 
+  }),
+  setSyncStats: (stats) => set(stats),
+  setConnectedDevices: (devices) => set({ connectedDevices: devices }),
+  setRemoteLatency: (latency) => set({ remoteLatency: latency }),
+  setEmergencyStop: (active) => set({ emergencyStopActive: active }),
+  addRemoteLog: (entry) => {
+    const logs = [...get().remoteLogs, entry];
+    if (logs.length > 100) logs.splice(0, logs.length - 100);
+    set({ remoteLogs: logs });
+  },
+  clearRemoteLogs: () => set({ remoteLogs: [] }),
 }));

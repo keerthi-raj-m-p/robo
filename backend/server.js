@@ -120,21 +120,44 @@ app.post('/api/command', (req, res) => {
   res.json({ status: 'queued' });
 });
 
+// Room validation endpoint (for mobile join page)
+app.get('/api/room/:id', (req, res) => {
+  const info = remoteManager.getRoomInfo(req.params.id);
+  if (info) {
+    res.json({ valid: true, ...info });
+  } else {
+    res.status(404).json({ valid: false, message: 'Room not found' });
+  }
+});
+
+// Local IP endpoint
+app.get('/api/local-ip', (req, res) => {
+  res.json({ ip: remoteManager.getLocalIP().address });
+});
+
+// All active rooms
+app.get('/api/rooms', (req, res) => {
+  res.json(remoteManager.getAllRooms());
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// Start server
-server.listen(PORT, () => {
+// Start server — listen on 0.0.0.0 so mobile devices on LAN can reach it
+server.listen(PORT, '0.0.0.0', () => {
+  const { address: localIp } = remoteManager.getLocalIP();
   console.log('');
-  console.log('╔══════════════════════════════════════════════╗');
-  console.log('║     ROBOTIC ARM CONTROL BACKEND v1.0.0      ║');
-  console.log('╠══════════════════════════════════════════════╣');
-  console.log(`║  HTTP Server:  http://localhost:${PORT}          ║`);
-  console.log(`║  WebSocket:    ws://localhost:${PORT}${WS_PATH}          ║`);
-  console.log('║  Serial:       Auto-scanning...              ║');
-  console.log('╚══════════════════════════════════════════════╝');
+  console.log('╔══════════════════════════════════════════════════╗');
+  console.log('║     ROBOTIC ARM CONTROL BACKEND v2.0.0          ║');
+  console.log('╠══════════════════════════════════════════════════╣');
+  console.log(`║  HTTP Server:  http://localhost:${PORT}              ║`);
+  console.log(`║  LAN Access:   http://${localIp}:${PORT}       ║`);
+  console.log(`║  WebSocket:    ws://localhost:${PORT}${WS_PATH}              ║`);
+  console.log('║  Socket.IO:    Enabled (rooms + remote control) ║');
+  console.log('║  Serial:       Auto-scanning...                 ║');
+  console.log('╚══════════════════════════════════════════════════╝');
   console.log('');
 
   // Start serial port scanning
@@ -165,4 +188,14 @@ process.on('SIGTERM', () => {
   wss.close();
   server.close();
   process.exit(0);
+});
+
+// Global Error Handling to prevent crashes
+process.on('uncaughtException', (err) => {
+  console.error('[Server] CRITICAL: Uncaught Exception:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });

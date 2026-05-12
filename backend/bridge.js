@@ -99,7 +99,9 @@ class Bridge {
     } else {
       this.stats.commandsDropped++;
       if (this.stats.commandsDropped % 10 === 1) { // Avoid spamming
-        this.addLog('system', '⚠ COMMAND DROPPED: No active hardware connection');
+        const reason = (this.connectionMode === 'disconnected') ? 'No hardware connected' : `Hardware in ${this.connectionMode} mode`;
+        this.addLog('system', `⚠ COMMAND DROPPED: ${reason}. Check USB/WiFi connection.`);
+        console.warn(`[Bridge] Command dropped: ${reason}`);
       }
     }
   }

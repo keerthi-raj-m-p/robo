@@ -310,8 +310,9 @@ void handleSerial() {
       }
     } else {
       serialBuffer += c;
-      if (serialBuffer.length() > 256) {
+      if (serialBuffer.length() > 512) {
         serialBuffer = ""; // Prevent buffer overflow
+        Serial.println("ERR:Buffer overflow");
       }
     }
   }
@@ -326,6 +327,8 @@ void processSerialCommand(String& cmd) {
 
   // HELLO - Handshake
   if (cmd == "HELLO") {
+    serialConnected = true;
+    lastSerialData = millis();
     Serial.println("READY");
     return;
   }

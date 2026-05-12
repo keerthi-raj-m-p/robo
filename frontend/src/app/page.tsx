@@ -12,6 +12,7 @@ import ProgramTab from '@/components/ProgramTab';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRemoteSync } from '@/hooks/useRemoteSync';
 import { Smartphone } from 'lucide-react';
+import RemoteConnect from '@/components/RemoteConnect';
 
 function useDemoTelemetry() {
   const { connectionMode, updateTelemetry, addLog } = useRobotStore();
@@ -99,9 +100,30 @@ function useDemoTelemetry() {
 }
 
 export default function Home() {
-  const { activeTab, isRemote, roomId } = useRobotStore();
+  const { activeTab, isRemote, roomId, setSingleJoint, setTargetAngles, setSpeed } = useRobotStore();
   const { sendMessage } = useWebSocket();
-  const { sendRemoteCommand } = useRemoteSync(sendMessage);
+
+  const handleRemoteCommand = useCallback((command: any) => {
+    console.log('[Dashboard] Remote command received:', command.type, command);
+    // 1. Update local store so laptop UI reflects mobile changes
+    if (command.type === 'move') {
+      setTargetAngles(command.angles);
+    } else if (command.type === 'jog') {
+      const current = useRobotStore.getState().targetAngles[command.servo];
+      setSingleJoint(command.servo, current + command.diff);
+    } else if (command.type === 'speed') {
+      setSpeed(command.value);
+    } else if (command.type === 'home') {
+      setTargetAngles([90, 45, 90, 0, 0, 90]);
+    } else if (command.type === 'zero') {
+      setTargetAngles([90, 90, 90, 90, 90, 90]);
+    }
+
+    // 2. Forward to physical robot via Serial/WS
+    sendMessage(command);
+  }, [sendMessage, setSingleJoint, setTargetAngles, setSpeed]);
+
+  const { sendRemoteCommand, sendEmergencyStop } = useRemoteSync(handleRemoteCommand);
   useDemoTelemetry();
 
   const handleCommand = useCallback((data: Record<string, any>) => {
@@ -124,19 +146,14 @@ export default function Home() {
 
   return (
     <div className={`h-screen flex flex-col bg-[var(--color-robo-bg)] ${isRemote ? 'overflow-hidden' : ''}`}>
-      {!isRemote && <TopBar />}
+      <TopBar />
       <main className="flex-1 overflow-auto min-h-0 relative">
-        {isRemote && (
-          <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1 bg-[var(--color-robo-accent-glow)] border border-[var(--color-robo-accent-dim)] rounded-full backdrop-blur-md">
-            <Smartphone size={12} className="text-[var(--color-robo-accent)]" />
-            <span className="text-[9px] font-black tracking-widest text-[var(--color-robo-accent)] uppercase">Remote Link: {roomId}</span>
-          </div>
-        )}
         <div className="h-full">
           {renderTabs()}
         </div>
       </main>
-      {!isRemote && <TabBar />}
+      <TabBar />
+
     </div>
   );
 }

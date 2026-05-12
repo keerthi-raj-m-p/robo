@@ -20,6 +20,7 @@ class SerialManager extends EventEmitter {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 100;
     this.buffer = '';
+    this.handshakeInterval = null;
   }
 
   /**
@@ -109,19 +110,53 @@ class SerialManager extends EventEmitter {
             return;
           }
 
+          // Add error listener to port to prevent crash
+          port.on('error', (err) => {
+            console.error(`[Serial] Port error on ${portPath}:`, err.message);
+            this.handleDisconnect();
+          });
+
           const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+          
+          parser.on('error', (err) => {
+            console.error(`[Serial] Parser error on ${portPath}:`, err.message);
+          });
 
           // Set handshake timeout
           const timeout = setTimeout(() => {
             console.log(`[Serial] Handshake timeout on ${portPath}`);
+            if (this.handshakeInterval) {
+              clearInterval(this.handshakeInterval);
+              this.handshakeInterval = null;
+            }
             try { port.close(); } catch (e) {}
             resolve(false);
-          }, 3000);
+          }, 5000); // Increased to 5s
+
+          const sendHello = () => {
+            if (this.connected) return;
+            try {
+              console.log(`[Serial] Sending HELLO to ${portPath}...`);
+              port.write('HELLO\n');
+            } catch (e) {
+              console.error(`[Serial] Error sending HELLO: ${e.message}`);
+            }
+          };
+
+          // Send HELLO immediately and then every 1s
+          sendHello();
+          this.handshakeInterval = setInterval(sendHello, 1000);
 
           parser.on('data', (data) => {
             const line = data.toString().trim();
+            if (line) console.log(`[Serial] RX (${portPath}): ${line}`);
 
-            if (line === 'READY' && !this.connected) {
+            // Connect on ANY data from the port - this ensures we detect the ESP32 even if it's sending boot logs or noise
+            if (!this.connected && line.length > 0) {
+              if (this.handshakeInterval) {
+                clearInterval(this.handshakeInterval);
+                this.handshakeInterval = null;
+              }
               clearTimeout(timeout);
               this.port = port;
               this.parser = parser;
@@ -129,7 +164,7 @@ class SerialManager extends EventEmitter {
               this.connected = true;
               this.reconnectAttempts = 0;
 
-              console.log(`[Serial] ✓ Connected to ESP32 on ${portPath}`);
+              console.log(`[Serial] ✓ Connected to ${portPath} (received: "${line}")`);
               this.emit('connected', portPath);
 
               // Set up ongoing data handler
@@ -153,12 +188,7 @@ class SerialManager extends EventEmitter {
             }
           });
 
-          // Send handshake
-          setTimeout(() => {
-            try {
-              port.write('HELLO\n');
-            } catch (e) {}
-          }, 500);
+          // Handshake logic moved into parser.on('data') and setInterval
         });
       } catch (err) {
         console.error(`[Serial] Error connecting to ${portPath}:`, err.message);
@@ -277,7 +307,9 @@ class SerialManager extends EventEmitter {
     switch (command.type) {
       case 'move':
         if (command.angles && Array.isArray(command.angles)) {
-          serialCmd = `S:${command.angles.join(',')}`;
+          // Round to 1 decimal place to keep packet size small (prevent buffer overflow in ESP32)
+          const rounded = command.angles.map(a => Math.round(a * 10) / 10);
+          serialCmd = `S:${rounded.join(',')}`;
         }
         break;
       case 'gripper':
